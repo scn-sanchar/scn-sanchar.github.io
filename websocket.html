@@ -1258,7 +1258,7 @@ function connect() {
   const params = new URLSearchParams({ chatbot_id: chatbotId, is_demo: isDemo });
   if (sessionId) params.set('session_id', sessionId);
   
-  const proto = 'wss';
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   const url = `${proto}://${host}/ws/chat?${params}`;
   log('out', `Connecting to ${url}`);
   addMsg(`Connecting to ${host}…`);
