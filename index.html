@@ -1,40 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Docs Files</title>
 </head>
+
 <body>
     <h1>A New Axis of Sparsity for Large Language Models</h1>
 
     <p>While Mixture-of-Experts (MoE) scales capacity via conditional computation, Transformers lack
-a native primitive for knowledge lookup, forcing them to inefficiently simulate retrieval through
-computation. To address this, we introduce conditional memory as a complementary sparsity
-axis, instantiated via Engram, a module that modernizes classic 𝑁-gram embedding for O (1)
-lookup. By formulating the Sparsity Allocation problem, we uncover a U-shaped scaling law
-that optimizes the trade-off between neural computation (MoE) and static memory (Engram).
-Guided by this law, we scale Engram to 27B parameters, achieving superior performance
-over a strictly iso-parameter and iso-FLOPs MoE baseline. Most notably, while the memory
-module is expected to aid knowledge retrieval (e.g., MMLU +3.4; CMMLU +4.0), we observe
-even larger gains in general reasoning (e.g., BBH +5.0; ARC-Challenge +3.7) and code/math
-domains (HumanEval +3.0; MATH +2.4). Mechanistic analyses reveal that Engram relieves
-the backbone’s early layers from static reconstruction, effectively deepening the network for
-complex reasoning. Furthermore, by delegating local dependencies to lookups, it frees up
-attention capacity for global context, substantially boosting long-context retrieval (e.g., MultiQuery NIAH: 84.2 → 97.0). Finally, Engram establishes infrastructure-aware efficiency: its
-deterministic addressing enables runtime prefetching from host memory, incurring negligible
-overhead. We envision conditional memory as an indispensable modeling primitive for nextgeneration sparse models.
-
-</p>
-    <h2>Introduction</h2>
-<p>
-Sparsity is a recurring design principle for intelligent systems, spanning from biological neural
-circuits (Lennie, 2003; Olshausen and Field, 1997) to modern Large Language Models (LLMs).
-Currently, this principle is primarily realized through Mixture-of-Experts (MoE) (Dai et al., 2024;
-Shazeer et al., 2017), which scales capacity via conditional computation. Owing to its ability to
-drastically increase model size without proportional increases in compute, MoE has become the
-de facto standard for frontier models (Comanici et al., 2025; Guo et al., 2025; Team et al., 2025).
+        a native primitive for knowledge lookup, forcing them to inefficiently simulate retrieval through
+        computation. To address this, we introduce conditional memory as a complementary sparsity
+        axis, instantiated via Engram, a module that modernizes classic 𝑁-gram embedding for O (1)
+        lookup. By formulating the Sparsity Allocation problem, we uncover a U-shaped scaling law
+        that optimizes the trade-off between neural computation (MoE) and static memory (Engram).
+        Guided by this law, we scale Engram to 27B parameters, achieving superior performance
+        over a strictly iso-parameter and iso-FLOPs MoE baseline. Most notably, while the memory
+        module is expected to aid knowledge retrieval (e.g., MMLU +3.4; CMMLU +4.0), we observe
+        even larger gains in general reasoning (e.g., BBH +5.0; ARC-Challenge +3.7) and code/math
+        domains (HumanEval +3.0; MATH +2.4). Mechanistic analyses reveal that Engram relieves
+        the backbone’s early layers from static reconstruction, effectively deepening the network for
+        complex reasoning. Furthermore, by delegating local dependencies to lookups, it frees up
+        attention capacity for global context, substantially boosting long-context retrieval (e.g., MultiQuery NIAH:
+        84.2 → 97.0). Finally, Engram establishes infrastructure-aware efficiency: its
+        deterministic addressing enables runtime prefetching from host memory, incurring negligible
+        overhead. We envision conditional memory as an indispensable modeling primitive for nextgeneration sparse
+        models.
     </p>
 
-  
+    <h2>Introduction</h2>
+
+    <p>
+        Sparsity is a recurring design principle for intelligent systems, spanning from biological neural
+        circuits (Lennie, 2003; Olshausen and Field, 1997) to modern Large Language Models (LLMs).
+        Currently, this principle is primarily realized through Mixture-of-Experts (MoE) (Dai et al., 2024;
+        Shazeer et al., 2017), which scales capacity via conditional computation. Owing to its ability to
+        drastically increase model size without proportional increases in compute, MoE has become the
+        de facto standard for frontier models (Comanici et al., 2025; Guo et al., 2025; Team et al., 2025).
+    </p>
+
+    <p>
+        Despite the success of this conditional computation paradigm, the intrinsic heterogeneity
+of linguistic signals suggests significant room for structural optimization. Specifically, language
+modeling entails two qualitatively different sub-tasks: compositional reasoning and knowlarXiv:2601.07372v1 [cs.CL] 12 Jan 2026
+edge retrieval. While the former demands deep, dynamic computation, a substantial portion
+of text—such as named entities and formulaic patterns—is local, static, and highly stereotyped (Constant et al., 2017; Erman, 2000). The effectiveness of classical 𝑁-gram models (Brants
+et al., 2007; Liu et al., 2024b; Nguyen, 2024) in capturing such local dependencies implies that
+these regularities are naturally represented as computationally inexpensive lookups. Since
+standard Transformers (Vaswani et al., 2017) lack a native knowledge lookup primitive, current
+LLMs are forced to simulate retrieval through computation. For instance, resolving a common
+multi-token entity requires consuming multiple early layers of attention and feed-forward networks (Ghandeharioun et al., 2024; Jin et al., 2025) (see Table 3). This process essentially amounts
+to an expensive runtime reconstruction of a static lookup table, wasting valuable sequential
+depth on trivial operations that could otherwise be allocated to higher-level reasoning.
+    </p>
+
+
 </body>
+
 </html>
