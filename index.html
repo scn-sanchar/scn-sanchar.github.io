@@ -55,6 +55,32 @@ to an expensive runtime reconstruction of a static lookup table, wasting valuabl
 depth on trivial operations that could otherwise be allocated to higher-level reasoning.
     </p>
 
+    <p>
+    To align model architecture with this linguistic duality, we advocate for a complementary
+axis of sparsity: conditional memory. Whereas conditional computation sparsely activates
+parameters to process dynamic logic (Bengio et al., 2013; Shazeer et al., 2017), conditional
+memory relies on sparse lookup operations to retrieve static embeddings for fixed knowledge.
+As a preliminary exploration of this paradigm, we revisit 𝑁-gram embeddings (Bojanowski et al.,
+2017) as a canonical instantiation: local context serves as a key to index a massive embedding
+table via constant-time O (1) lookups (Huang et al., 2025a; Pagnoni et al., 2025; Tito Svenstrup
+et al., 2017; Yu et al., 2025). Our investigation reveals that, perhaps surprisingly, this static
+retrieval mechanism can serve as an ideal complement to modern MoE architecture—but
+only if it is properly designed. In this paper, we propose Engram, a conditional memory
+module grounded in the classic 𝑁-gram structure but equipped with modern adaptations
+such as tokenizer compression, multi-head hashing, contextualized gating, and multi-branch
+integration (detailed in Section 2).
+To quantify the synergy between these two primitives, we formulate the Sparsity Allocation
+problem: given a fixed total parameter budget, how should capacity be distributed between
+MoE experts and Engram memory? Our experiments uncover a distinct U-shaped scaling
+law, revealing that even simple lookup mechanisms, when treated as a first-class modeling
+primitive, act as essential complements to neural computation. Guided by this allocation law, we
+scale Engram to a 27B-parameter model. Compared to a strictly iso-parameter and iso-FLOPs
+MoE baseline, Engram-27B achieves superior efficiency across diverse domains. Crucially, the
+gains are not limited to knowledge-intensive tasks (e.g., MMLU: +3.4; CMMLU: +4.0; MMLUPro: +1.8), where memory capacity is intuitively beneficial; we observe even more significant
+improvements in general reasoning (e.g., BBH: +5.0; ARC-Challenge: +3.7; DROP: +3.3) and
+code/math domains (e.g., HumanEval: +3.0; MATH: +2.4; GSM8K: +2.2).
+    </p>
+
 
 </body>
 
