@@ -77,9 +77,18 @@
         capacity is intuitively beneficial; we observe even more significant
         improvements in general reasoning (e.g., BBH: +5.0; ARC-Challenge: +3.7; DROP: +3.3) and
         code/math domains (e.g., HumanEval: +3.0; MATH: +2.4; GSM8K: +2.2).
-    </p>
-
-    <a href="https://arxiv.org/abs/2601.07372">Read the full paper on arXiv</a>
+        Mechanistic analysis via LogitLens (nostalgebraist, 2020) and CKA (Hendrycks et al., 2021a)
+        reveals the source of these gains: Engram relieves the backbone from reconstructing static
+        knowledge in early layers, thereby increasing effective depth available for complex reasoning. Furthermore, by
+        delegating local dependencies to lookups, Engram frees up attention
+        capacity to focus on global context, enabling exceptional performance in long-context scenarios—substantially
+        outperforming baselines on LongPPL (Fang et al.) and RULER (Hsieh et al.)
+        (e.g., Multi-Query NIAH: 97.0 vs. 84.2; Variable Tracking: 89.0 vs. 77.0).
+        Finally, we establish infrastructure-aware efficiency as a first-class principle. Unlike MoE’s
+        dynamic routing, Engram employs deterministic IDs to enable runtime prefetching, overlapping
+        communication with computation. Empirical results show that offloading a 100B-parameter
+        table to host memory incurs negligible overhead (< 3%). This demonstrates that Engram effectively bypasses GPU
+            memory constraints, facilitating aggressive parameter expansion. </p>
 
 
 </body>
