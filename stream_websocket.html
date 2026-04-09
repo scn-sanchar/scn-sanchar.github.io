@@ -1315,12 +1315,7 @@
 
             const tryPlay = () => {
                 if (shouldPlay) {
-                    audio.play().then(() => {
-                        log('in', 'Autoplay started', 'bin');
-                    }).catch(err => {
-                        log('err', `Autoplay prevented: ${err.message}. Click the play button.`, 'err');
-                        console.warn('Autoplay prevented:', err);
-                    });
+                    audio.load();
                 }
             };
 
@@ -1331,7 +1326,6 @@
                 tryPlay();
             });
 
-            // Fallback if loadedmetadata doesn't fire (some browsers/formats)
             audio.addEventListener('canplay', () => {
                 if (duration.textContent === '0:00' && audio.duration) {
                     const mins = Math.floor(audio.duration / 60);
@@ -1362,7 +1356,6 @@
             if (botAudioQueue.length === 0) {
                 isBotAudioPlaying = false;
                 activeAudioElement = null;
-                // If we were pulsing for bot audio, stop it now
                 if (!isRecording) {
                     $orbContainer.classList.remove('active');
                     $orb.classList.remove('recording');
@@ -1371,7 +1364,7 @@
             }
             isBotAudioPlaying = true;
             const blob = botAudioQueue.shift();
-            const audio = addAudioMsg(blob, 'bot', true);
+            const audio = addAudioMsg(blob, 'bot', false);
             activeAudioElement = audio;
 
             audio.addEventListener('ended', () => playNextInQueue());
