@@ -314,7 +314,13 @@
 
             textWs.addEventListener('open', () => {
                 // Authenticate first
-                textWs.send(JSON.stringify({ type: 'auth', payload: { 'x-api-key': apiKey } }));
+                textWs.send(JSON.stringify({
+                    type: 'auth',
+                    payload: {
+                        'x-api-key': apiKey,
+                        'chatbot-id': chatbotId,
+                    },
+                }));
             });
 
             textWs.addEventListener('message', (ev) => {
