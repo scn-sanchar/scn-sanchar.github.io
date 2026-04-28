@@ -1,444 +1,615 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>BizChat Voice Dev Dev Dev</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+    </head>
 
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BizChat Voice</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
-</head>
-
-<body class="bg-gray-950 text-gray-100 min-h-screen flex items-center justify-center p-4">
-
-    <!-- Config Panel -->
-    <div id="config-panel" class="w-full max-w-md space-y-4">
-        <h1 class="text-2xl font-bold text-center">BizChat Voice</h1>
-        <div class="bg-gray-900 rounded-2xl p-6 space-y-4">
-            <div>
-                <label class="block text-sm text-gray-400 mb-1">API Base URL</label>
-                <input id="api-base" type="text" value="http://localhost:8000"
-                    class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" />
+    <body
+        class="bg-gray-950 text-gray-100 min-h-screen flex items-center justify-center p-4"
+    >
+        <!-- Config Panel -->
+        <div id="config-panel" class="w-full max-w-md space-y-4">
+            <h1 class="text-2xl font-bold text-center">BizChat Voice</h1>
+            <div class="bg-gray-900 rounded-2xl p-6 space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1"
+                        >API Base URL</label
+                    >
+                    <input
+                        id="api-base"
+                        type="text"
+                        value="http://localhost:8000"
+                        class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                    />
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1"
+                        >API Key (x-api-key)</label
+                    >
+                    <input
+                        id="api-key"
+                        type="text"
+                        placeholder="your-api-key"
+                        class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                    />
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1"
+                        >Chatbot ID</label
+                    >
+                    <input
+                        id="chatbot-id"
+                        type="text"
+                        placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                        class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                    />
+                </div>
+                <button
+                    id="connect-btn"
+                    onclick="connect()"
+                    class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 rounded-lg transition"
+                >
+                    Connect
+                </button>
+                <p id="config-error" class="text-red-400 text-sm hidden"></p>
             </div>
-            <div>
-                <label class="block text-sm text-gray-400 mb-1">API Key (x-api-key)</label>
-                <input id="api-key" type="text" placeholder="your-api-key"
-                    class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" />
-            </div>
-            <div>
-                <label class="block text-sm text-gray-400 mb-1">Chatbot ID</label>
-                <input id="chatbot-id" type="text" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                    class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" />
-            </div>
-            <button id="connect-btn" onclick="connect()"
-                class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 rounded-lg transition">
-                Connect
-            </button>
-            <p id="config-error" class="text-red-400 text-sm hidden"></p>
         </div>
-    </div>
 
-    <!-- Chat Panel -->
-    <div id="chat-panel" class="hidden w-full max-w-md flex flex-col h-[90vh] max-h-[700px]">
-        <!-- Header -->
-        <div class="flex items-center justify-between bg-gray-900 rounded-t-2xl px-5 py-3">
-            <div class="flex items-center gap-2">
-                <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-yellow-400"></span>
-                <span id="status-text" class="text-sm text-gray-400">Connecting…</span>
+        <!-- Chat Panel -->
+        <div
+            id="chat-panel"
+            class="hidden w-full max-w-md flex flex-col h-[90vh] max-h-[700px]"
+        >
+            <!-- Header -->
+            <div
+                class="flex items-center justify-between bg-gray-900 rounded-t-2xl px-5 py-3"
+            >
+                <div class="flex items-center gap-2">
+                    <span
+                        id="status-dot"
+                        class="w-2.5 h-2.5 rounded-full bg-yellow-400"
+                    ></span>
+                    <span id="status-text" class="text-sm text-gray-400"
+                        >Connecting…</span
+                    >
+                </div>
+                <button
+                    onclick="disconnect()"
+                    class="text-gray-500 hover:text-red-400 text-xs transition"
+                >
+                    Disconnect
+                </button>
             </div>
-            <button onclick="disconnect()"
-                class="text-gray-500 hover:text-red-400 text-xs transition">Disconnect</button>
-        </div>
 
-        <!-- Messages -->
-        <div id="messages" class="flex-1 bg-gray-900 overflow-y-auto px-4 py-3 space-y-3 border-t border-gray-800">
-        </div>
+            <!-- Messages -->
+            <div
+                id="messages"
+                class="flex-1 bg-gray-900 overflow-y-auto px-4 py-3 space-y-3 border-t border-gray-800"
+            ></div>
 
-        <!-- Controls -->
-        <div class="bg-gray-900 rounded-b-2xl px-5 py-4 border-t border-gray-800 flex flex-col items-center gap-3">
-            <!-- Text input row -->
-            <div class="flex w-full gap-2">
-                <input id="text-input" type="text" placeholder="Type a message…"
-                    class="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 disabled:opacity-40"
+            <!-- Controls -->
+            <div
+                class="bg-gray-900 rounded-b-2xl px-5 py-4 border-t border-gray-800 flex flex-col items-center gap-3"
+            >
+                <!-- Text input row -->
+                <div class="flex w-full gap-2">
+                    <input
+                        id="text-input"
+                        type="text"
+                        placeholder="Type a message…"
+                        class="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 disabled:opacity-40"
+                        disabled
+                        onkeydown="
+                            if (event.key === 'Enter' && !event.shiftKey) {
+                                event.preventDefault();
+                                sendText();
+                            }
+                        "
+                    />
+                    <button
+                        id="send-btn"
+                        onclick="sendText()"
+                        class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition disabled:opacity-40"
+                        disabled
+                    >
+                        Send
+                    </button>
+                </div>
+                <!-- Push-to-talk button -->
+                <button
+                    id="mic-btn"
+                    onmousedown="startSpeaking()"
+                    onmouseup="stopSpeaking()"
+                    ontouchstart="startSpeaking()"
+                    ontouchend="stopSpeaking()"
+                    class="w-16 h-16 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition select-none disabled:opacity-40"
                     disabled
-                    onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); sendText(); }" />
-                <button id="send-btn" onclick="sendText()"
-                    class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition disabled:opacity-40"
-                    disabled>Send</button>
+                >
+                    <svg
+                        id="mic-icon"
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="w-7 h-7 text-gray-300"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        stroke-width="2"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"
+                        />
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M19 10a7 7 0 01-14 0M12 19v4m-4 0h8"
+                        />
+                    </svg>
+                </button>
+                <p class="text-xs text-gray-500">
+                    Hold to speak · or type above
+                </p>
+                <!-- Agent audio element (hidden) -->
+                <audio
+                    id="agent-audio"
+                    autoplay
+                    playsinline
+                    class="hidden"
+                ></audio>
             </div>
-            <!-- Push-to-talk button -->
-            <button id="mic-btn" onmousedown="startSpeaking()" onmouseup="stopSpeaking()" ontouchstart="startSpeaking()"
-                ontouchend="stopSpeaking()"
-                class="w-16 h-16 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition select-none disabled:opacity-40"
-                disabled>
-                <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg" class="w-7 h-7 text-gray-300" fill="none"
-                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                        d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 10a7 7 0 01-14 0M12 19v4m-4 0h8" />
-                </svg>
-            </button>
-            <p class="text-xs text-gray-500">Hold to speak · or type above</p>
-            <!-- Agent audio element (hidden) -->
-            <audio id="agent-audio" autoplay playsinline class="hidden"></audio>
         </div>
-    </div>
 
-    <script>
-        // ── State ──────────────────────────────────────────────────────────────────
-        let room = null;
-        let localTrack = null;
-        let sessionId = null;
-        let tokenTtl = 0;
-        let refreshTimer = null;
-        let apiBase = '';
-        let apiKey = '';
-        let chatbotId = '';
+        <script>
+            // ── State ──────────────────────────────────────────────────────────────────
+            let room = null;
+            let localTrack = null;
+            let sessionId = null;
+            let tokenTtl = 0;
+            let refreshTimer = null;
+            let apiBase = "";
+            let apiKey = "";
+            let chatbotId = "";
 
-        // Text chat WebSocket
-        let textWs = null;
-        let textWsReady = false;
-        let textBubble = null;
-        let textBuffer = '';
+            // Text chat WebSocket
+            let textWs = null;
+            let textWsReady = false;
+            let textBubble = null;
+            let textBuffer = "";
 
-        // ── UI helpers ─────────────────────────────────────────────────────────────
-        function showError(msg) {
-            const el = document.getElementById('config-error');
-            el.textContent = msg;
-            el.classList.remove('hidden');
-        }
+            // ── UI helpers ─────────────────────────────────────────────────────────────
+            function showError(msg) {
+                const el = document.getElementById("config-error");
+                el.textContent = msg;
+                el.classList.remove("hidden");
+            }
 
-        function setStatus(color, text) {
-            document.getElementById('status-dot').className =
-                `w-2.5 h-2.5 rounded-full bg-${color}-400`;
-            document.getElementById('status-text').textContent = text;
-        }
+            function setStatus(color, text) {
+                document.getElementById("status-dot").className =
+                    `w-2.5 h-2.5 rounded-full bg-${color}-400`;
+                document.getElementById("status-text").textContent = text;
+            }
 
-        function addMessage(role, text) {
-            const wrap = document.getElementById('messages');
-            const isAgent = role === 'agent';
-            const div = document.createElement('div');
-            div.className = `flex ${isAgent ? 'justify-start' : 'justify-end'}`;
-            div.innerHTML = `
+            function addMessage(role, text) {
+                const wrap = document.getElementById("messages");
+                const isAgent = role === "agent";
+                const div = document.createElement("div");
+                div.className = `flex ${isAgent ? "justify-start" : "justify-end"}`;
+                div.innerHTML = `
       <div class="max-w-[80%] px-4 py-2 rounded-2xl text-sm leading-relaxed
-        ${isAgent
-                    ? 'bg-gray-800 text-gray-100 rounded-tl-sm'
-                    : 'bg-blue-600 text-white rounded-tr-sm'}">
+        ${
+            isAgent
+                ? "bg-gray-800 text-gray-100 rounded-tl-sm"
+                : "bg-blue-600 text-white rounded-tr-sm"
+        }">
         ${escapeHtml(text)}
       </div>`;
-            wrap.appendChild(div);
-            wrap.scrollTop = wrap.scrollHeight;
-            return div.querySelector('div');
-        }
-
-        function escapeHtml(str) {
-            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        }
-
-        // ── LiveKit data channel messages ──────────────────────────────────────────
-        let agentBubble = null;
-        let agentBuffer = '';
-
-        function handleDataMessage(payload) {
-            let msg;
-            try { msg = JSON.parse(new TextDecoder().decode(payload)); }
-            catch { return; }
-
-            switch (msg.type) {
-                case 'session_started':
-                    setStatus('green', 'Ready');
-                    document.getElementById('mic-btn').disabled = false;
-                    document.getElementById('text-input').disabled = false;
-                    document.getElementById('send-btn').disabled = false;
-                    break;
-
-                case 'user_transcript':
-                    addMessage('user', msg.text);
-                    // Reset agent bubble for new turn
-                    agentBubble = null;
-                    agentBuffer = '';
-                    break;
-
-                case 'agent_text':
-                    if (!agentBubble) {
-                        agentBubble = addMessage('agent', '');
-                        agentBuffer = '';
-                    }
-                    agentBuffer += msg.text;
-                    agentBubble.textContent = agentBuffer;
-                    document.getElementById('messages').scrollTop =
-                        document.getElementById('messages').scrollHeight;
-                    if (msg.final) {
-                        agentBubble = null;
-                        agentBuffer = '';
-                    }
-                    break;
-
-                case 'error':
-                    addMessage('agent', `[Error] ${msg.data?.message || 'Unknown error'}`);
-                    break;
-            }
-        }
-
-        // ── Agent audio ────────────────────────────────────────────────────────────
-        function attachAgentAudio(track) {
-            const el = document.getElementById('agent-audio');
-            track.attach(el);
-        }
-
-        // ── Token refresh ──────────────────────────────────────────────────────────
-        async function scheduleRefresh(ttl) {
-            clearTimeout(refreshTimer);
-            // Refresh 30s before expiry
-            const delay = Math.max((ttl - 30) * 1000, 5000);
-            refreshTimer = setTimeout(async () => {
-                try {
-                    const res = await fetch(`${apiBase}/api/public/livekit/refresh`, {
-                        method: 'POST',
-                        headers: {
-                            'x-api-key': apiKey,
-                            'chatbot-id': chatbotId,
-                            'session-id': sessionId,
-                        },
-                    });
-                    if (!res.ok) return;
-                    const data = await res.json();
-                    if (room) {
-                        // LiveKit JS SDK refreshes token via room.refreshToken
-                        await room.refreshToken?.(data.access_token);
-                        scheduleRefresh(data.token_ttl_seconds);
-                    }
-                } catch (e) {
-                    console.warn('Token refresh failed', e);
-                }
-            }, delay);
-        }
-
-        // ── Connect ────────────────────────────────────────────────────────────────
-        async function connect() {
-            apiBase = document.getElementById('api-base').value.replace(/\/$/, '');
-            apiKey = document.getElementById('api-key').value.trim();
-            chatbotId = document.getElementById('chatbot-id').value.trim();
-
-            if (!apiKey || !chatbotId) {
-                showError('API Key and Chatbot ID are required.');
-                return;
+                wrap.appendChild(div);
+                wrap.scrollTop = wrap.scrollHeight;
+                return div.querySelector("div");
             }
 
-            document.getElementById('config-error').classList.add('hidden');
-            document.getElementById('connect-btn').disabled = true;
-            document.getElementById('connect-btn').textContent = 'Connecting…';
-
-            let signalData;
-            try {
-                const res = await fetch(`${apiBase}/api/public/livekit/signal`, {
-                    method: 'POST',
-                    headers: {
-                        'x-api-key': apiKey,
-                        'chatbot-id': chatbotId,
-                    },
-                });
-                if (!res.ok) {
-                    const err = await res.json().catch(() => ({}));
-                    throw new Error(err.detail || `HTTP ${res.status}`);
-                }
-                signalData = await res.json();
-            } catch (e) {
-                showError(`Failed to get signal: ${e.message}`);
-                document.getElementById('connect-btn').disabled = false;
-                document.getElementById('connect-btn').textContent = 'Connect';
-                return;
+            function escapeHtml(str) {
+                return str
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;");
             }
 
-            sessionId = signalData.session_id;
-            tokenTtl = signalData.token_ttl_seconds;
+            // ── LiveKit data channel messages ──────────────────────────────────────────
+            let agentBubble = null;
+            let agentBuffer = "";
 
-            // Switch UI
-            document.getElementById('config-panel').classList.add('hidden');
-            document.getElementById('chat-panel').classList.remove('hidden');
-            document.getElementById('chat-panel').classList.add('flex');
-            setStatus('yellow', 'Connecting…');
-
-            room = new LivekitClient.Room({
-                adaptiveStream: true,
-                dynacast: true,
-            });
-
-            room.on(LivekitClient.RoomEvent.DataReceived, (payload) => {
-                handleDataMessage(payload);
-            });
-
-            room.on(LivekitClient.RoomEvent.TrackSubscribed, (track, pub, participant) => {
-                if (track.kind === LivekitClient.Track.Kind.Audio) {
-                    attachAgentAudio(track);
-                }
-            });
-
-            room.on(LivekitClient.RoomEvent.Disconnected, () => {
-                setStatus('red', 'Disconnected');
-                document.getElementById('mic-btn').disabled = true;
-                document.getElementById('text-input').disabled = true;
-                document.getElementById('send-btn').disabled = true;
-                clearTimeout(refreshTimer);
-            });
-
-            room.on(LivekitClient.RoomEvent.Reconnecting, () => setStatus('yellow', 'Reconnecting…'));
-            room.on(LivekitClient.RoomEvent.Reconnected, () => setStatus('green', 'Ready'));
-
-            try {
-                await room.connect(signalData.livekit_url, signalData.access_token);
-                setStatus('green', 'Ready');
-                document.getElementById('mic-btn').disabled = false;
-                document.getElementById('text-input').disabled = false;
-                document.getElementById('send-btn').disabled = false;
-                scheduleRefresh(tokenTtl);
-            } catch (e) {
-                setStatus('red', 'Failed to connect');
-                addMessage('agent', `Connection error: ${e.message}`);
-            }
-
-            // Open the text-chat WebSocket
-            connectTextWs();
-        }
-
-        // ── Text WebSocket ──────────────────────────────────────────────────────────
-        function connectTextWs() {
-            const wsBase = apiBase.replace(/^http/, 'ws');
-            const params = new URLSearchParams({
-                chatbot_id: chatbotId,
-                session_id: sessionId,
-                is_demo: 'false',
-            });
-            textWs = new WebSocket(`${wsBase}/ws/chat?${params}`);
-            textWsReady = false;
-
-            textWs.addEventListener('open', () => {
-                // Authenticate first
-                textWs.send(JSON.stringify({
-                    type: 'auth',
-                    payload: {
-                        'x-api-key': apiKey,
-                        'chatbot-id': chatbotId,
-                    },
-                }));
-            });
-
-            textWs.addEventListener('message', (ev) => {
+            function handleDataMessage(payload) {
                 let msg;
-                try { msg = JSON.parse(ev.data); } catch { return; }
+                try {
+                    msg = JSON.parse(new TextDecoder().decode(payload));
+                } catch {
+                    return;
+                }
 
                 switch (msg.type) {
-                    case 'connected':
-                    case 'session_started':
-                        textWsReady = true;
+                    case "session_started":
+                        setStatus("green", "Ready");
+                        document.getElementById("mic-btn").disabled = false;
+                        document.getElementById("text-input").disabled = false;
+                        document.getElementById("send-btn").disabled = false;
                         break;
 
-                    case 'stream_start':
-                        textBubble = addMessage('agent', '');
-                        textBuffer = '';
+                    case "user_transcript":
+                        addMessage("user", msg.text);
+                        // Reset agent bubble for new turn
+                        agentBubble = null;
+                        agentBuffer = "";
                         break;
 
-                    case 'stream_chunk': {
-                        const chunk = msg.payload?.chunk ?? '';
-                        textBuffer += chunk;
-                        if (textBubble) {
-                            textBubble.textContent = textBuffer;
-                            document.getElementById('messages').scrollTop =
-                                document.getElementById('messages').scrollHeight;
+                    case "agent_text":
+                        if (!agentBubble) {
+                            agentBubble = addMessage("agent", "");
+                            agentBuffer = "";
+                        }
+                        agentBuffer += msg.text;
+                        agentBubble.textContent = agentBuffer;
+                        document.getElementById("messages").scrollTop =
+                            document.getElementById("messages").scrollHeight;
+                        if (msg.final) {
+                            agentBubble = null;
+                            agentBuffer = "";
                         }
                         break;
-                    }
 
-                    case 'stream_end':
-                        textBubble = null;
-                        textBuffer = '';
-                        break;
-
-                    case 'response':
-                        // Final answer delivered — bubble already streamed; nothing extra needed.
-                        break;
-
-                    case 'error':
-                        addMessage('agent', `[Error] ${msg.payload?.error || 'Unknown error'}`);
+                    case "error":
+                        addMessage(
+                            "agent",
+                            `[Error] ${msg.data?.message || "Unknown error"}`,
+                        );
                         break;
                 }
-            });
-
-            textWs.addEventListener('close', () => {
-                textWsReady = false;
-            });
-
-            textWs.addEventListener('error', (e) => {
-                console.warn('Text WS error', e);
-            });
-        }
-
-        // ── Send text message ───────────────────────────────────────────────────────
-        async function sendText() {
-            const input = document.getElementById('text-input');
-            const query = input.value.trim();
-            if (!query) return;
-            if (!textWs || textWs.readyState !== WebSocket.OPEN) {
-                console.warn('Text WebSocket not open');
-                return;
             }
-            input.value = '';
-            addMessage('user', query);
-            textWs.send(JSON.stringify({ type: 'query', payload: { query } }));
-        }
 
-        // ── Push-to-talk ───────────────────────────────────────────────────────────
-        async function startSpeaking() {
-            if (!room || localTrack) return;
-            try {
-                localTrack = await LivekitClient.createLocalAudioTrack({
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                    autoGainControl: true,
+            // ── Agent audio ────────────────────────────────────────────────────────────
+            function attachAgentAudio(track) {
+                const el = document.getElementById("agent-audio");
+                track.attach(el);
+            }
+
+            // ── Token refresh ──────────────────────────────────────────────────────────
+            async function scheduleRefresh(ttl) {
+                clearTimeout(refreshTimer);
+                // Refresh 30s before expiry
+                const delay = Math.max((ttl - 30) * 1000, 5000);
+                refreshTimer = setTimeout(async () => {
+                    try {
+                        const res = await fetch(
+                            `${apiBase}/api/public/livekit/refresh`,
+                            {
+                                method: "POST",
+                                headers: {
+                                    "x-api-key": apiKey,
+                                    "chatbot-id": chatbotId,
+                                    "session-id": sessionId,
+                                },
+                            },
+                        );
+                        if (!res.ok) return;
+                        const data = await res.json();
+                        if (room) {
+                            // LiveKit JS SDK refreshes token via room.refreshToken
+                            await room.refreshToken?.(data.access_token);
+                            scheduleRefresh(data.token_ttl_seconds);
+                        }
+                    } catch (e) {
+                        console.warn("Token refresh failed", e);
+                    }
+                }, delay);
+            }
+
+            // ── Connect ────────────────────────────────────────────────────────────────
+            async function connect() {
+                apiBase = document
+                    .getElementById("api-base")
+                    .value.replace(/\/$/, "");
+                apiKey = document.getElementById("api-key").value.trim();
+                chatbotId = document.getElementById("chatbot-id").value.trim();
+
+                if (!apiKey || !chatbotId) {
+                    showError("API Key and Chatbot ID are required.");
+                    return;
+                }
+
+                document.getElementById("config-error").classList.add("hidden");
+                document.getElementById("connect-btn").disabled = true;
+                document.getElementById("connect-btn").textContent =
+                    "Connecting…";
+
+                let signalData;
+                try {
+                    const res = await fetch(
+                        `${apiBase}/api/public/livekit/signal`,
+                        {
+                            method: "POST",
+                            headers: {
+                                "x-api-key": apiKey,
+                                "chatbot-id": chatbotId,
+                            },
+                        },
+                    );
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => ({}));
+                        throw new Error(err.detail || `HTTP ${res.status}`);
+                    }
+                    signalData = await res.json();
+                } catch (e) {
+                    showError(`Failed to get signal: ${e.message}`);
+                    document.getElementById("connect-btn").disabled = false;
+                    document.getElementById("connect-btn").textContent =
+                        "Connect";
+                    return;
+                }
+
+                sessionId = signalData.session_id;
+                tokenTtl = signalData.token_ttl_seconds;
+
+                // Switch UI
+                document.getElementById("config-panel").classList.add("hidden");
+                document
+                    .getElementById("chat-panel")
+                    .classList.remove("hidden");
+                document.getElementById("chat-panel").classList.add("flex");
+                setStatus("yellow", "Connecting…");
+
+                room = new LivekitClient.Room({
+                    adaptiveStream: true,
+                    dynacast: true,
                 });
-                await room.localParticipant.publishTrack(localTrack);
 
-                // Visual feedback
-                const btn = document.getElementById('mic-btn');
-                btn.classList.add('bg-red-600', 'scale-110');
-                btn.classList.remove('bg-gray-700');
-            } catch (e) {
-                console.error('Mic error', e);
+                room.on(LivekitClient.RoomEvent.DataReceived, (payload) => {
+                    handleDataMessage(payload);
+                });
+
+                room.on(
+                    LivekitClient.RoomEvent.TrackSubscribed,
+                    (track, pub, participant) => {
+                        if (track.kind === LivekitClient.Track.Kind.Audio) {
+                            attachAgentAudio(track);
+                        }
+                    },
+                );
+
+                room.on(LivekitClient.RoomEvent.Disconnected, () => {
+                    setStatus("red", "Disconnected");
+                    document.getElementById("mic-btn").disabled = true;
+                    document.getElementById("text-input").disabled = true;
+                    document.getElementById("send-btn").disabled = true;
+                    clearTimeout(refreshTimer);
+                    window.fetch = _origFetch; // restore after disconnect
+                });
+
+                room.on(LivekitClient.RoomEvent.Reconnecting, () =>
+                    setStatus("yellow", "Reconnecting…"),
+                );
+                room.on(LivekitClient.RoomEvent.Reconnected, () =>
+                    setStatus("green", "Ready"),
+                );
+
+                // Inject chatbot_id as a query param on the LiveKit URL so the backend
+                // middleware can identify the chatbot even on internal SDK requests
+                // (browsers cannot send custom headers on WebSocket upgrades).
+                let livekitUrl = signalData.livekit_url;
+                try {
+                    const u = new URL(livekitUrl);
+                    u.searchParams.set("chatbot_id", chatbotId);
+                    livekitUrl = u.toString();
+                } catch (_) {
+                    const sep = livekitUrl.includes("?") ? "&" : "?";
+                    livekitUrl = `${livekitUrl}${sep}chatbot_id=${encodeURIComponent(chatbotId)}`;
+                }
+
+                // Patch fetch so that the LiveKit SDK's internal HTTP requests
+                // (e.g. GET /rtc/validate) also carry the chatbot-id header that
+                // the backend middleware requires.
+                const _origFetch = window.fetch;
+                window.fetch = function (input, init = {}) {
+                    const url =
+                        typeof input === "string"
+                            ? input
+                            : input instanceof URL
+                              ? input.href
+                              : input.url;
+                    if (url && url.includes(new URL(livekitUrl).hostname)) {
+                        init = {
+                            ...init,
+                            headers: {
+                                "chatbot-id": chatbotId,
+                                "x-api-key": apiKey,
+                                ...(init.headers || {}),
+                            },
+                        };
+                    }
+                    return _origFetch.call(this, input, init);
+                };
+
+                try {
+                    await room.connect(livekitUrl, signalData.access_token);
+                    setStatus("green", "Ready");
+                    document.getElementById("mic-btn").disabled = false;
+                    document.getElementById("text-input").disabled = false;
+                    document.getElementById("send-btn").disabled = false;
+                    scheduleRefresh(tokenTtl);
+                } catch (e) {
+                    setStatus("red", "Failed to connect");
+                    addMessage("agent", `Connection error: ${e.message}`);
+                    window.fetch = _origFetch; // restore on error too
+                }
+
+                // Open the text-chat WebSocket
+                connectTextWs();
             }
-        }
 
-        async function stopSpeaking() {
-            if (!localTrack) return;
-            try {
-                await room.localParticipant.unpublishTrack(localTrack);
-                localTrack.stop();
-                localTrack = null;
+            // ── Text WebSocket ──────────────────────────────────────────────────────────
+            function connectTextWs() {
+                const wsBase = apiBase.replace(/^http/, "ws");
+                const params = new URLSearchParams({
+                    chatbot_id: chatbotId,
+                    session_id: sessionId,
+                    is_demo: "false",
+                });
+                textWs = new WebSocket(`${wsBase}/ws/chat?${params}`);
+                textWsReady = false;
 
-                // Reset button
-                const btn = document.getElementById('mic-btn');
-                btn.classList.remove('bg-red-600', 'scale-110');
-                btn.classList.add('bg-gray-700');
-            } catch (e) {
-                console.error('Unmic error', e);
+                textWs.addEventListener("open", () => {
+                    // Authenticate first
+                    textWs.send(
+                        JSON.stringify({
+                            type: "auth",
+                            payload: {
+                                "x-api-key": apiKey,
+                                "chatbot-id": chatbotId,
+                            },
+                        }),
+                    );
+                });
+
+                textWs.addEventListener("message", (ev) => {
+                    let msg;
+                    try {
+                        msg = JSON.parse(ev.data);
+                    } catch {
+                        return;
+                    }
+
+                    switch (msg.type) {
+                        case "connected":
+                        case "session_started":
+                            textWsReady = true;
+                            break;
+
+                        case "stream_start":
+                            textBubble = addMessage("agent", "");
+                            textBuffer = "";
+                            break;
+
+                        case "stream_chunk": {
+                            const chunk = msg.payload?.chunk ?? "";
+                            textBuffer += chunk;
+                            if (textBubble) {
+                                textBubble.textContent = textBuffer;
+                                document.getElementById("messages").scrollTop =
+                                    document.getElementById(
+                                        "messages",
+                                    ).scrollHeight;
+                            }
+                            break;
+                        }
+
+                        case "stream_end":
+                            textBubble = null;
+                            textBuffer = "";
+                            break;
+
+                        case "response":
+                            // Final answer delivered — bubble already streamed; nothing extra needed.
+                            break;
+
+                        case "error":
+                            addMessage(
+                                "agent",
+                                `[Error] ${msg.payload?.error || "Unknown error"}`,
+                            );
+                            break;
+                    }
+                });
+
+                textWs.addEventListener("close", () => {
+                    textWsReady = false;
+                });
+
+                textWs.addEventListener("error", (e) => {
+                    console.warn("Text WS error", e);
+                });
             }
-        }
 
-        // ── Disconnect ─────────────────────────────────────────────────────────────
-        async function disconnect() {
-            clearTimeout(refreshTimer);
-            if (localTrack) { localTrack.stop(); localTrack = null; }
-            if (room) { await room.disconnect(); room = null; }
-            if (textWs) { textWs.close(); textWs = null; }
-            textWsReady = false;
+            // ── Send text message ───────────────────────────────────────────────────────
+            async function sendText() {
+                const input = document.getElementById("text-input");
+                const query = input.value.trim();
+                if (!query) return;
+                if (!textWs || textWs.readyState !== WebSocket.OPEN) {
+                    console.warn("Text WebSocket not open");
+                    return;
+                }
+                input.value = "";
+                addMessage("user", query);
+                textWs.send(
+                    JSON.stringify({ type: "query", payload: { query } }),
+                );
+            }
 
-            document.getElementById('messages').innerHTML = '';
-            document.getElementById('chat-panel').classList.add('hidden');
-            document.getElementById('chat-panel').classList.remove('flex');
-            document.getElementById('config-panel').classList.remove('hidden');
-            document.getElementById('connect-btn').disabled = false;
-            document.getElementById('connect-btn').textContent = 'Connect';
-        }
-    </script>
-</body>
+            // ── Push-to-talk ───────────────────────────────────────────────────────────
+            async function startSpeaking() {
+                if (!room || localTrack) return;
+                try {
+                    localTrack = await LivekitClient.createLocalAudioTrack({
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true,
+                    });
+                    await room.localParticipant.publishTrack(localTrack);
 
+                    // Visual feedback
+                    const btn = document.getElementById("mic-btn");
+                    btn.classList.add("bg-red-600", "scale-110");
+                    btn.classList.remove("bg-gray-700");
+                } catch (e) {
+                    console.error("Mic error", e);
+                }
+            }
+
+            async function stopSpeaking() {
+                if (!localTrack) return;
+                try {
+                    await room.localParticipant.unpublishTrack(localTrack);
+                    localTrack.stop();
+                    localTrack = null;
+
+                    // Reset button
+                    const btn = document.getElementById("mic-btn");
+                    btn.classList.remove("bg-red-600", "scale-110");
+                    btn.classList.add("bg-gray-700");
+                } catch (e) {
+                    console.error("Unmic error", e);
+                }
+            }
+
+            // ── Disconnect ─────────────────────────────────────────────────────────────
+            async function disconnect() {
+                clearTimeout(refreshTimer);
+                if (localTrack) {
+                    localTrack.stop();
+                    localTrack = null;
+                }
+                if (room) {
+                    await room.disconnect();
+                    room = null;
+                }
+                if (textWs) {
+                    textWs.close();
+                    textWs = null;
+                }
+                textWsReady = false;
+
+                document.getElementById("messages").innerHTML = "";
+                document.getElementById("chat-panel").classList.add("hidden");
+                document.getElementById("chat-panel").classList.remove("flex");
+                document
+                    .getElementById("config-panel")
+                    .classList.remove("hidden");
+                document.getElementById("connect-btn").disabled = false;
+                document.getElementById("connect-btn").textContent = "Connect";
+            }
+        </script>
+    </body>
 </html>
