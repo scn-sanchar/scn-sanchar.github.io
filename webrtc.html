@@ -67,8 +67,8 @@
                     disabled>Send</button>
             </div>
             <!-- Push-to-talk button -->
-            <button id="mic-btn" onmousedown="startSpeaking()" onmouseup="stopSpeaking()" ontouchstart="startSpeaking()"
-                ontouchend="stopSpeaking()"
+            <button id="mic-btn" onmousedown="startSpeaking(event)" onmouseup="stopSpeaking(event)"
+                ontouchstart="startSpeaking(event)" ontouchend="stopSpeaking(event)"
                 class="w-16 h-16 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition select-none disabled:opacity-40"
                 disabled>
                 <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg" class="w-7 h-7 text-gray-300" fill="none"
@@ -100,6 +100,9 @@
         let textWsReady = false;
         let textBubble = null;
         let textBuffer = '';
+
+        // Guard flag to prevent concurrent startSpeaking calls (async race + touch/mouse double-fire)
+        let _speakingInProgress = false;
 
         // ── UI helpers ─────────────────────────────────────────────────────────────
         function showError(msg) {
@@ -164,14 +167,21 @@
                         agentBubble = addMessage('agent', '');
                         agentBuffer = '';
                     }
-                    agentBuffer += msg.text;
-                    agentBubble.textContent = agentBuffer;
-                    document.getElementById('messages').scrollTop =
-                        document.getElementById('messages').scrollHeight;
                     if (msg.final) {
+                        // The final event carries the full authoritative text — replace
+                        // the streamed buffer instead of appending to avoid duplication.
+                        if (msg.text) {
+                            agentBuffer = msg.text;
+                            agentBubble.textContent = agentBuffer;
+                        }
                         agentBubble = null;
                         agentBuffer = '';
+                    } else {
+                        agentBuffer += msg.text;
+                        agentBubble.textContent = agentBuffer;
                     }
+                    document.getElementById('messages').scrollTop =
+                        document.getElementById('messages').scrollHeight;
                     break;
 
                 case 'error':
@@ -388,14 +398,24 @@
         }
 
         // ── Push-to-talk ───────────────────────────────────────────────────────────
-        async function startSpeaking() {
-            if (!room || localTrack) return;
+        async function startSpeaking(evt) {
+            // Prevent ghost mousedown events fired after touchstart on mobile
+            if (evt && evt.cancelable) evt.preventDefault();
+            // Guard against concurrent calls (async race between touch + mouse events)
+            if (!room || localTrack || _speakingInProgress) return;
+            _speakingInProgress = true;
             try {
-                localTrack = await LivekitClient.createLocalAudioTrack({
+                const track = await LivekitClient.createLocalAudioTrack({
                     echoCancellation: true,
                     noiseSuppression: true,
                     autoGainControl: true,
                 });
+                // Check again after the async gap — user may have released already
+                if (!_speakingInProgress) {
+                    track.stop();
+                    return;
+                }
+                localTrack = track;
                 await room.localParticipant.publishTrack(localTrack);
 
                 // Visual feedback
@@ -404,20 +424,27 @@
                 btn.classList.remove('bg-gray-700');
             } catch (e) {
                 console.error('Mic error', e);
+                localTrack = null;
+                _speakingInProgress = false;
             }
         }
 
-        async function stopSpeaking() {
+        async function stopSpeaking(evt) {
+            if (evt && evt.cancelable) evt.preventDefault();
+            _speakingInProgress = false;
             if (!localTrack) return;
-            try {
-                await room.localParticipant.unpublishTrack(localTrack);
-                localTrack.stop();
-                localTrack = null;
+            // Capture and clear localTrack immediately to prevent double-stop
+            const track = localTrack;
+            localTrack = null;
 
-                // Reset button
-                const btn = document.getElementById('mic-btn');
-                btn.classList.remove('bg-red-600', 'scale-110');
-                btn.classList.add('bg-gray-700');
+            // Reset button immediately (don't wait for async)
+            const btn = document.getElementById('mic-btn');
+            btn.classList.remove('bg-red-600', 'scale-110');
+            btn.classList.add('bg-gray-700');
+
+            try {
+                await room.localParticipant.unpublishTrack(track);
+                track.stop();
             } catch (e) {
                 console.error('Unmic error', e);
             }
