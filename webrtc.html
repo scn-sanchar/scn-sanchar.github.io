@@ -98,6 +98,11 @@
         // Text chat WebSocket
         let textWs = null;
         let textWsReady = false;
+
+        // Track the first agent participant we receive data from.
+        // If somehow two agents end up in the room, data from the second is
+        // ignored, preventing duplicate user/agent bubbles.
+        let agentParticipantIdentity = null;
         let textBubble = null;
         let textBuffer = '';
 
@@ -241,12 +246,17 @@
 
             let signalData;
             try {
+                const signalHeaders = {
+                    'x-api-key': apiKey,
+                    'chatbot-id': chatbotId,
+                };
+                // Pass existing session-id as a header so the backend resumes
+                // the same DB session instead of creating a new one.
+                if (sessionId) signalHeaders['session-id'] = sessionId;
+
                 const res = await fetch(`${apiBase}/api/public/livekit/signal`, {
                     method: 'POST',
-                    headers: {
-                        'x-api-key': apiKey,
-                        'chatbot-id': chatbotId,
-                    },
+                    headers: signalHeaders,
                 });
                 if (!res.ok) {
                     const err = await res.json().catch(() => ({}));
@@ -274,7 +284,17 @@
                 dynacast: true,
             });
 
-            room.on(LivekitClient.RoomEvent.DataReceived, (payload) => {
+            room.on(LivekitClient.RoomEvent.DataReceived, (payload, participant) => {
+                // Lock onto the first agent we hear from; discard data from any
+                // other participant (guards against accidental dual-agent rooms).
+                if (participant) {
+                    if (!agentParticipantIdentity) {
+                        agentParticipantIdentity = participant.identity;
+                    } else if (participant.identity !== agentParticipantIdentity) {
+                        console.warn('DataReceived from unexpected participant, ignoring', participant.identity);
+                        return;
+                    }
+                }
                 handleDataMessage(payload);
             });
 
@@ -457,6 +477,7 @@
             if (room) { await room.disconnect(); room = null; }
             if (textWs) { textWs.close(); textWs = null; }
             textWsReady = false;
+            agentParticipantIdentity = null;
 
             document.getElementById('messages').innerHTML = '';
             document.getElementById('chat-panel').classList.add('hidden');
