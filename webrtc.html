@@ -17,7 +17,7 @@
         <div class="bg-gray-900 rounded-2xl p-6 space-y-4">
             <div>
                 <label class="block text-sm text-gray-400 mb-1">API Base URL</label>
-                <input id="api-base" type="text" value="http://localhost:8000"
+                <input id="api-base" type="text" value="https://stg-ai.bizchat-ai.com"
                     class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" />
             </div>
             <div>
@@ -231,7 +231,7 @@
 
         // ── Connect ────────────────────────────────────────────────────────────────
         async function connect() {
-            apiBase = document.getElementById('api-base').value.replace(/\/$/, '');
+            apiBase = document.getElementById('api-base').value.replace(/\/$/, '').replace(/\/api$/, '');
             apiKey = document.getElementById('api-key').value.trim();
             chatbotId = document.getElementById('chatbot-id').value.trim();
 
@@ -249,6 +249,7 @@
                 const signalHeaders = {
                     'x-api-key': apiKey,
                     'chatbot-id': chatbotId,
+                    'is-demo': 'false',
                 };
                 // Pass existing session-id as a header so the backend resumes
                 // the same DB session instead of creating a new one.
