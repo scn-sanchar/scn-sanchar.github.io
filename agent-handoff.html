@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agent Handoff Test — Split Screen</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-950 text-gray-100 min-h-screen">
+
+    <!-- ── Global config banner ──────────────────────────────────────────── -->
+    <div id="config-banner" class="w-full bg-gray-900 border-b border-gray-800 px-6 py-4">
+        <h1 class="text-xl font-bold mb-4 text-center">Agent Handoff — Split Screen Tester</h1>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 max-w-4xl mx-auto">
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">API Base URL</label>
+                <input id="cfg-api-base" type="text" value="http://localhost:8000"
+                    class="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-blue-500" />
+            </div>
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">API Key (x-api-key)</label>
+                <input id="cfg-api-key" type="text" placeholder="your-api-key"
+                    class="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-blue-500" />
+            </div>
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Chatbot ID</label>
+                <input id="cfg-chatbot-id" type="text" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                    class="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-blue-500" />
+            </div>
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Agent Token (x-agent-token)</label>
+                <input id="cfg-agent-token" type="text" placeholder="AGENT_WS_SECRET"
+                    class="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-blue-500" />
+            </div>
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Agent Name (Optional)</label>
+                <input id="cfg-agent-name" type="text" value="Test Agent"
+                    class="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-blue-500" />
+            </div>
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Agent ID (required)</label>
+                <input id="cfg-agent-id" type="text" placeholder="agent-uuid or any string"
+                    class="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-blue-500" />
+            </div>
+        </div>
+        <p id="cfg-error" class="text-red-400 text-xs mt-2 text-center hidden"></p>
+    </div>
+
+    <!-- ── Split screen ──────────────────────────────────────────────────── -->
+    <div class="flex h-[calc(100vh-160px)]">
+
+        <!-- ── LEFT: User / Customer panel ───────────────────────────────── -->
+        <div class="flex-1 flex flex-col border-r border-gray-800">
+            <!-- header -->
+            <div class="flex items-center justify-between bg-gray-900 px-4 py-2 border-b border-gray-800">
+                <div class="flex items-center gap-2">
+                    <span id="user-dot" class="w-2.5 h-2.5 rounded-full bg-gray-500"></span>
+                    <span class="text-sm font-semibold">Customer</span>
+                    <span id="user-status" class="text-xs text-gray-400 ml-1">Disconnected</span>
+                </div>
+                <div class="flex gap-2">
+                    <button id="user-connect-btn" onclick="userConnect()"
+                        class="text-xs bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded transition">Connect</button>
+                    <button id="user-disconnect-btn" onclick="userDisconnect()"
+                        class="text-xs bg-gray-700 hover:bg-red-600 px-3 py-1 rounded transition hidden">Disconnect</button>
+                </div>
+            </div>
+
+            <!-- messages -->
+            <div id="user-messages" class="flex-1 overflow-y-auto px-4 py-3 space-y-2 bg-gray-950"></div>
+
+            <!-- handoff zone -->
+            <div id="user-handoff-zone" class="bg-yellow-900/30 border-t border-yellow-700/40 px-4 py-2 hidden">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs text-yellow-300" id="user-handoff-label">Waiting for agent…</span>
+                    <button onclick="userRequestHandoff()" id="user-handoff-btn"
+                        class="text-xs bg-yellow-600 hover:bg-yellow-500 px-3 py-1 rounded transition">
+                        Request Handoff
+                    </button>
+                </div>
+                <div class="text-xs text-gray-500 mt-0.5">Session: <span id="user-session-id"
+                        class="font-mono text-gray-300">—</span></div>
+            </div>
+
+            <!-- input -->
+            <div class="bg-gray-900 border-t border-gray-800 px-4 py-3 flex gap-2">
+                <input id="user-input" type="text" placeholder="Type as customer…"
+                    class="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500 disabled:opacity-40"
+                    disabled onkeydown="if(event.key==='Enter'){ event.preventDefault(); userSend(); }" />
+                <button id="user-send-btn" onclick="userSend()"
+                    class="bg-blue-600 hover:bg-blue-500 text-white text-sm px-4 py-2 rounded transition disabled:opacity-40"
+                    disabled>Send</button>
+            </div>
+        </div>
+
+        <!-- ── RIGHT: Agent panel ─────────────────────────────────────────── -->
+        <div class="flex-1 flex flex-col">
+            <!-- header -->
+            <div class="flex items-center justify-between bg-gray-900 px-4 py-2 border-b border-gray-800">
+                <div class="flex items-center gap-2">
+                    <span id="agent-dot" class="w-2.5 h-2.5 rounded-full bg-gray-500"></span>
+                    <span class="text-sm font-semibold">Agent</span>
+                    <span id="agent-status" class="text-xs text-gray-400 ml-1">Not connected</span>
+                </div>
+                <div class="flex gap-2">
+                    <button id="agent-connect-btn" onclick="agentConnect()"
+                        class="text-xs bg-green-600 hover:bg-green-500 px-3 py-1 rounded transition disabled:opacity-40"
+                        disabled title="Wait for handoff session ID from customer side">Join Session</button>
+                    <button id="agent-bye-btn" onclick="agentBye()"
+                        class="text-xs bg-red-700 hover:bg-red-600 px-3 py-1 rounded transition hidden">End
+                        Handoff</button>
+                </div>
+            </div>
+
+            <!-- session info -->
+            <div class="bg-gray-900 border-b border-gray-800 px-4 py-2 flex items-center gap-3">
+                <label class="text-xs text-gray-400 whitespace-nowrap">Session ID:</label>
+                <input id="agent-session-input" type="text" placeholder="Auto-filled after handoff or paste manually"
+                    class="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-green-500" />
+            </div>
+
+            <!-- messages -->
+            <div id="agent-messages" class="flex-1 overflow-y-auto px-4 py-3 space-y-2 bg-gray-950"></div>
+
+            <!-- input -->
+            <div class="bg-gray-900 border-t border-gray-800 px-4 py-3 flex gap-2">
+                <input id="agent-input" type="text" placeholder="Type as agent…"
+                    class="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-green-500 disabled:opacity-40"
+                    disabled onkeydown="if(event.key==='Enter'){ event.preventDefault(); agentSend(); }" />
+                <button id="agent-send-btn" onclick="agentSend()"
+                    class="bg-green-600 hover:bg-green-500 text-white text-sm px-4 py-2 rounded transition disabled:opacity-40"
+                    disabled>Send</button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ── Scripts ────────────────────────────────────────────────────────── -->
+    <script>
+        // ── Shared config ────────────────────────────────────────────────────────
+        function getCfg() {
+            return {
+                apiBase: document.getElementById('cfg-api-base').value.replace(/\/$/, '').replace(/\/api$/, ''),
+                apiKey: document.getElementById('cfg-api-key').value.trim(),
+                chatbotId: document.getElementById('cfg-chatbot-id').value.trim(),
+                agentToken: document.getElementById('cfg-agent-token').value.trim(),
+                agentName: document.getElementById('cfg-agent-name').value.trim() || 'Agent',
+                agentId: document.getElementById('cfg-agent-id').value.trim(),
+            };
+        }
+
+        function showCfgError(msg) {
+            const el = document.getElementById('cfg-error');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 5000);
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+
+        // ── Message bubble helpers ────────────────────────────────────────────────
+        function addMsg(panelId, side, text, badge) {
+            // side: 'left' | 'right'
+            // badge: optional label string
+            const wrap = document.getElementById(panelId);
+            const div = document.createElement('div');
+            div.className = `flex ${side === 'right' ? 'justify-end' : 'justify-start'}`;
+
+            const colorClass = side === 'right'
+                ? 'bg-blue-600 text-white rounded-tr-sm'
+                : 'bg-gray-800 text-gray-100 rounded-tl-sm';
+
+            div.innerHTML = `
+        <div class="max-w-[80%] px-3 py-2 rounded-2xl text-sm leading-relaxed ${colorClass}">
+          ${badge ? `<span class="block text-[10px] opacity-60 mb-0.5">${escapeHtml(badge)}</span>` : ''}
+          ${escapeHtml(text)}
+        </div>`;
+            wrap.appendChild(div);
+            wrap.scrollTop = wrap.scrollHeight;
+            return div.querySelector('div');
+        }
+
+        function addSystemMsg(panelId, text) {
+            const wrap = document.getElementById(panelId);
+            const div = document.createElement('div');
+            div.className = 'flex justify-center';
+            div.innerHTML = `<span class="text-xs text-gray-500 italic">${escapeHtml(text)}</span>`;
+            wrap.appendChild(div);
+            wrap.scrollTop = wrap.scrollHeight;
+        }
+
+        // ── ════════════════════════════════════════════════════════════════════ ──
+        //    USER / CUSTOMER side
+        // ── ════════════════════════════════════════════════════════════════════ ──
+        let userWs = null;
+        let userSessionId = null;
+        let userInHandoff = false;
+
+        // streaming buffer for text WS
+        let userStreamBubble = null;
+        let userStreamBuffer = '';
+
+        function userSetStatus(color, text) {
+            document.getElementById('user-dot').className = `w-2.5 h-2.5 rounded-full bg-${color}-400`;
+            document.getElementById('user-status').textContent = text;
+        }
+
+        function userSetConnected(on) {
+            document.getElementById('user-connect-btn').classList.toggle('hidden', on);
+            document.getElementById('user-disconnect-btn').classList.toggle('hidden', !on);
+            document.getElementById('user-input').disabled = !on;
+            document.getElementById('user-send-btn').disabled = !on;
+            if (on) {
+                document.getElementById('user-handoff-zone').classList.remove('hidden');
+            }
+        }
+
+        async function userConnect() {
+            const cfg = getCfg();
+            if (!cfg.apiKey || !cfg.chatbotId) {
+                showCfgError('API Key and Chatbot ID are required.');
+                return;
+            }
+
+            userSetStatus('yellow', 'Connecting…');
+            document.getElementById('user-connect-btn').disabled = true;
+
+            const wsBase = cfg.apiBase.replace(/^http/, 'ws');
+            const params = new URLSearchParams({
+                chatbot_id: cfg.chatbotId,
+                is_demo: 'false',
+            });
+            if (userSessionId) params.set('session_id', userSessionId);
+
+            userWs = new WebSocket(`${wsBase}/ws/chat?${params}`);
+
+            userWs.addEventListener('open', () => {
+                // authenticate
+                userWs.send(JSON.stringify({
+                    type: 'auth',
+                    payload: {
+                        'x-api-key': cfg.apiKey,
+                        'chatbot-id': cfg.chatbotId,
+                    },
+                }));
+            });
+
+            userWs.addEventListener('message', (ev) => {
+                let msg;
+                try { msg = JSON.parse(ev.data); } catch { return; }
+                userHandleMsg(msg);
+            });
+
+            userWs.addEventListener('close', () => {
+                userSetStatus('red', 'Disconnected');
+                userSetConnected(false);
+                addSystemMsg('user-messages', 'WebSocket closed');
+                userWs = null;
+                document.getElementById('user-connect-btn').disabled = false;
+            });
+
+            userWs.addEventListener('error', () => {
+                userSetStatus('red', 'Error');
+            });
+        }
+
+        function userHandleMsg(msg) {
+            switch (msg.type) {
+                case 'connected':
+                case 'session_started': {
+                    if (msg.payload?.session_id) {
+                        userSessionId = msg.payload.session_id;
+                        document.getElementById('user-session-id').textContent = userSessionId;
+                        // auto-fill agent session field
+                        document.getElementById('agent-session-input').value = userSessionId;
+                        // enable agent connect button
+                        document.getElementById('agent-connect-btn').disabled = false;
+                    }
+                    userSetStatus('green', 'Ready');
+                    userSetConnected(true);
+                    if (msg.payload?.history?.length) {
+                        msg.payload.history.forEach(h => {
+                            const side = h.role === 'human' ? 'right' : 'left';
+                            addMsg('user-messages', side, h.content);
+                        });
+                    }
+                    break;
+                }
+
+                case 'stream_start':
+                    userStreamBubble = addMsg('user-messages', 'left', '');
+                    userStreamBuffer = '';
+                    break;
+
+                case 'stream_chunk': {
+                    const chunk = msg.payload?.chunk ?? '';
+                    userStreamBuffer += chunk;
+                    if (userStreamBubble) userStreamBubble.childNodes[0]
+                        ? (userStreamBubble.lastChild.textContent = userStreamBuffer)
+                        : (userStreamBubble.textContent = userStreamBuffer);
+                    document.getElementById('user-messages').scrollTop = 99999;
+                    break;
+                }
+
+                case 'stream_end':
+                    userStreamBubble = null;
+                    userStreamBuffer = '';
+                    break;
+
+                case 'response':
+                    // non-streaming response (e.g. agent message relay)
+                    if (msg.payload?.answer) {
+                        addMsg('user-messages', 'left', msg.payload.answer, userInHandoff ? 'Agent' : 'AI');
+                    }
+                    break;
+
+                case 'agent_handoff':
+                    userInHandoff = true;
+                    document.getElementById('user-handoff-label').textContent = 'Handoff requested — waiting for agent…';
+                    document.getElementById('user-handoff-btn').disabled = true;
+                    addSystemMsg('user-messages', '⏳ Handoff initiated. Waiting for agent to join…');
+                    if (msg.payload?.session_id) {
+                        userSessionId = msg.payload.session_id;
+                        document.getElementById('user-session-id').textContent = userSessionId;
+                        document.getElementById('agent-session-input').value = userSessionId;
+                        document.getElementById('agent-connect-btn').disabled = false;
+                    }
+                    break;
+
+                case 'agent_assigned':
+                    addSystemMsg('user-messages', `✅ Agent "${msg.payload?.agent_name || 'Agent'}" joined.`);
+                    document.getElementById('user-handoff-label').textContent = `Agent "${msg.payload?.agent_name || 'Agent'}" is handling your request`;
+                    break;
+
+                case 'agent_returned':
+                    userInHandoff = false;
+                    addSystemMsg('user-messages', '🤖 Agent ended session. AI assistant resumed.');
+                    document.getElementById('user-handoff-label').textContent = 'Handoff ended — AI resumed';
+                    document.getElementById('user-handoff-btn').disabled = false;
+                    document.getElementById('user-handoff-btn').textContent = 'Request Handoff Again';
+                    break;
+
+                case 'error':
+                    addSystemMsg('user-messages', `⚠ ${msg.payload?.error || 'Unknown error'}`);
+                    break;
+            }
+        }
+
+        function userRequestHandoff() {
+            if (!userWs || userWs.readyState !== WebSocket.OPEN) {
+                showCfgError('Connect as customer first.');
+                return;
+            }
+            userWs.send(JSON.stringify({ type: 'hello_agent' }));
+            addSystemMsg('user-messages', 'Requesting agent handoff…');
+            document.getElementById('user-handoff-btn').disabled = true;
+        }
+
+        function userSend() {
+            const input = document.getElementById('user-input');
+            const query = input.value.trim();
+            if (!query || !userWs || userWs.readyState !== WebSocket.OPEN) return;
+            input.value = '';
+            addMsg('user-messages', 'right', query);
+            userWs.send(JSON.stringify({ type: 'query', payload: { query } }));
+        }
+
+        function userDisconnect() {
+            if (userWs) { userWs.close(); userWs = null; }
+            userSetStatus('gray', 'Disconnected');
+            userSetConnected(false);
+        }
+
+        // ── ════════════════════════════════════════════════════════════════════ ──
+        //    AGENT side
+        // ── ════════════════════════════════════════════════════════════════════ ──
+        let agentWs = null;
+        let agentAuthStep = 0; // 0=none, 1=api-key sent, 2=agent-token sent, 3=fully authed
+
+        // streaming buffer for messages from user relayed to agent
+        let agentStreamBubble = null;
+        let agentStreamBuffer = '';
+
+        function agentSetStatus(color, text) {
+            document.getElementById('agent-dot').className = `w-2.5 h-2.5 rounded-full bg-${color}-400`;
+            document.getElementById('agent-status').textContent = text;
+        }
+
+        function agentSetConnected(on) {
+            document.getElementById('agent-connect-btn').classList.toggle('hidden', on);
+            document.getElementById('agent-bye-btn').classList.toggle('hidden', !on);
+            document.getElementById('agent-input').disabled = !on;
+            document.getElementById('agent-send-btn').disabled = !on;
+        }
+
+        async function agentConnect() {
+            const cfg = getCfg();
+            const sessionId = document.getElementById('agent-session-input').value.trim();
+
+            if (!cfg.agentToken) {
+                showCfgError('Agent token is required.');
+                return;
+            }
+            if (!cfg.agentId) {
+                showCfgError('Agent ID is required.');
+                return;
+            }
+            if (!sessionId) {
+                showCfgError('Session ID is required for agent to join. Trigger handoff on the customer side first.');
+                return;
+            }
+
+            agentSetStatus('yellow', 'Connecting…');
+            document.getElementById('agent-connect-btn').disabled = true;
+
+            const wsBase = cfg.apiBase.replace(/^http/, 'ws');
+            agentWs = new WebSocket(`${wsBase}/ws/agent/chat?session_id=${encodeURIComponent(sessionId)}`);
+
+            agentAuthStep = 0;
+
+            agentWs.addEventListener('open', () => {
+                // Step 1: authenticate with x-api-key
+                agentAuthStep = 1;
+                agentWs.send(JSON.stringify({
+                    type: 'auth',
+                    payload: { 'x-api-key': cfg.apiKey },
+                }));
+            });
+
+            agentWs.addEventListener('message', (ev) => {
+                let msg;
+                try { msg = JSON.parse(ev.data); } catch { return; }
+                agentHandleMsg(msg);
+            });
+
+            agentWs.addEventListener('close', () => {
+                agentSetStatus('red', 'Disconnected');
+                agentSetConnected(false);
+                addSystemMsg('agent-messages', 'Agent WebSocket closed');
+                agentWs = null;
+                agentAuthStep = 0;
+                document.getElementById('agent-connect-btn').disabled = false;
+            });
+
+            agentWs.addEventListener('error', () => {
+                agentSetStatus('red', 'Error');
+            });
+        }
+
+        function agentHandleMsg(msg) {
+            switch (msg.type) {
+                case 'auth_success':
+                    if (agentAuthStep === 1) {
+                        // Step 1 done — send x-agent-token
+                        agentAuthStep = 2;
+                        const cfg = getCfg();
+                        const payload = { 'x-agent-token': cfg.agentToken, agent_id: cfg.agentId };
+                        if (cfg.agentName) payload.agent_name = cfg.agentName;
+                        agentWs.send(JSON.stringify({ type: 'auth', payload }));
+                        addSystemMsg('agent-messages', '🔑 API key accepted. Sending agent token…');
+                    } else {
+                        // Step 2 done — fully authenticated
+                        agentAuthStep = 3;
+                        agentSetStatus('green', 'Authenticated');
+                        addSystemMsg('agent-messages', '✅ Agent token accepted. Waiting for session assignment…');
+                    }
+                    break;
+
+                case 'agent_assigned':
+                    agentSetStatus('green', 'Connected');
+                    agentSetConnected(true);
+                    addSystemMsg('agent-messages', `✅ Assigned to session. Chatbot: ${msg.payload?.chatbot_name || '—'}`);
+                    if (msg.payload?.history?.length) {
+                        msg.payload.history.forEach(h => {
+                            const badge = h.role === 'human' ? 'Customer' : h.role === 'agent' ? 'Agent' : 'AI';
+                            const side = h.role === 'human' ? 'left' : 'right';
+                            addMsg('agent-messages', side, h.content, badge);
+                        });
+                    }
+                    break;
+
+                case 'response':
+                    // user message relayed to agent
+                    if (msg.payload?.answer) {
+                        addMsg('agent-messages', 'left', msg.payload.answer, 'Customer');
+                    }
+                    break;
+
+                case 'error':
+                    addSystemMsg('agent-messages', `⚠ ${msg.payload?.error || msg.error || 'Error'}`);
+                    break;
+
+                case 'pong':
+                    break;
+
+                default:
+                    addSystemMsg('agent-messages', `[${msg.type}] ${JSON.stringify(msg.payload ?? '')}`);
+            }
+        }
+
+        function agentSend() {
+            const input = document.getElementById('agent-input');
+            const text = input.value.trim();
+            if (!text || !agentWs || agentWs.readyState !== WebSocket.OPEN) return;
+            input.value = '';
+            addMsg('agent-messages', 'right', text, 'You (Agent)');
+            agentWs.send(JSON.stringify({ type: 'query', payload: { query: text } }));
+        }
+
+        function agentBye() {
+            if (agentWs && agentWs.readyState === WebSocket.OPEN) {
+                agentWs.send(JSON.stringify({ type: 'bye_agent' }));
+                addSystemMsg('agent-messages', 'Ending handoff session…');
+            }
+            // close will fire and clean up via close handler
+        }
+    </script>
+</body>
+
+</html>
