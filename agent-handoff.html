@@ -30,8 +30,8 @@
                     class="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-blue-500" />
             </div>
             <div>
-                <label class="block text-xs text-gray-400 mb-1">Agent Token (x-agent-token)</label>
-                <input id="cfg-agent-token" type="text" placeholder="AGENT_WS_SECRET"
+                <label class="block text-xs text-gray-400 mb-1">Agent Token (token)</label>
+                <input id="cfg-agent-token" type="text" placeholder="Access Token"
                     class="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-blue-500" />
             </div>
             <div>
@@ -458,10 +458,10 @@
             switch (msg.type) {
                 case 'auth_success':
                     if (agentAuthStep === 1) {
-                        // Step 1 done — send x-agent-token
+                        // Step 1 done — send token
                         agentAuthStep = 2;
                         const cfg = getCfg();
-                        const payload = { 'x-agent-token': cfg.agentToken, agent_id: cfg.agentId };
+                        const payload = { 'token': cfg.agentToken, agent_id: cfg.agentId };
                         if (cfg.agentName) payload.agent_name = cfg.agentName;
                         agentWs.send(JSON.stringify({ type: 'auth', payload }));
                         addSystemMsg('agent-messages', '🔑 API key accepted. Sending agent token…');
