@@ -17,7 +17,7 @@
         <div class="bg-gray-900 rounded-2xl p-6 space-y-4">
             <div>
                 <label class="block text-sm text-gray-400 mb-1">API Base URL</label>
-                <input id="api-base" type="text" value="https://stg-ai.bizchat-ai.com"
+                <input id="api-base" type="text" value="https://ai.bizchat-ai.com"
                     class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" />
             </div>
             <div>
@@ -28,6 +28,11 @@
             <div>
                 <label class="block text-sm text-gray-400 mb-1">Chatbot ID</label>
                 <input id="chatbot-id" type="text" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                    class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" />
+            </div>
+            <div>
+                <label class="block text-sm text-gray-400 mb-1">Session ID <span class="text-gray-500">(optional)</span></label>
+                <input id="session-id" type="text" placeholder="auto-generated if empty"
                     class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" />
             </div>
             <button id="connect-btn" onclick="connect()"
@@ -234,6 +239,8 @@
             apiBase = document.getElementById('api-base').value.replace(/\/$/, '').replace(/\/api$/, '');
             apiKey = document.getElementById('api-key').value.trim();
             chatbotId = document.getElementById('chatbot-id').value.trim();
+            const manualSessionId = document.getElementById('session-id').value.trim();
+            if (manualSessionId) sessionId = manualSessionId;
 
             if (!apiKey || !chatbotId) {
                 showError('API Key and Chatbot ID are required.');
