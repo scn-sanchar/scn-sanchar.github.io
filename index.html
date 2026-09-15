@@ -25,8 +25,11 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3 max-w-5xl mx-auto">
             <div>
                 <label class="block text-xs text-gray-400 mb-1">API Base URL</label>
-                <input id="cfg-api-base" type="text" value="http://localhost:8000"
-                    class="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-blue-500" />
+                <select id="cfg-api-base"
+                    class="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-blue-500">
+                    <option value="http://localhost:8000">localhost:8000</option>
+                    <option value="https://ai-dev.bizchat-ai.com">ai-dev.bizchat-ai.com</option>
+                </select>
             </div>
             <div>
                 <label class="block text-xs text-gray-400 mb-1">API Key (x-api-key)</label>
@@ -78,8 +81,12 @@
                 <div>
                     <label class="block text-xs text-gray-400 mb-1">Session ID <span
                             class="text-gray-500">(optional)</span></label>
-                    <input id="text-session-id" type="text" placeholder="auto-generated if empty"
-                        class="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-blue-500" />
+                    <div class="flex gap-1">
+                        <input id="text-session-id" type="text" placeholder="auto-generated if empty"
+                            class="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-blue-500" />
+                        <button onclick="textClearSession()" title="Clear session ID"
+                            class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-400 hover:text-gray-200 text-sm px-2.5 py-1.5 rounded transition flex-shrink-0">✕</button>
+                    </div>
                 </div>
                 <div>
                     <label class="block text-xs text-gray-400 mb-1">Demo mode</label>
@@ -146,8 +153,12 @@
             <div>
                 <label class="block text-xs text-gray-400 mb-1">Session ID <span
                         class="text-gray-500">(optional)</span></label>
-                <input id="voice-session-id" type="text" placeholder="auto-generated if empty"
-                    class="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-blue-500" />
+                <div class="flex gap-1">
+                    <input id="voice-session-id" type="text" placeholder="auto-generated if empty"
+                        class="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-blue-500" />
+                    <button onclick="voiceClearSession()" title="Clear session ID"
+                        class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-400 hover:text-gray-200 text-sm px-2.5 py-1.5 rounded transition flex-shrink-0">✕</button>
+                </div>
             </div>
             <button id="voice-connect-btn" onclick="voiceConnect()"
                 class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 rounded-lg transition">
@@ -272,10 +283,12 @@
                     </div>
                 </div>
 
-                <div class="bg-gray-900 border-b border-gray-800 px-4 py-2 flex items-center gap-3">
+                <div class="bg-gray-900 border-b border-gray-800 px-4 py-2 flex items-center gap-2">
                     <label class="text-xs text-gray-400 whitespace-nowrap">Session ID:</label>
                     <input id="ho-agent-session-input" type="text" placeholder="Auto-filled after handoff or paste manually"
-                        class="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-green-500" />
+                        class="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-green-500" />
+                    <button onclick="hoAgentClearSession()" title="Clear session ID"
+                        class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-400 hover:text-gray-200 text-xs px-2 py-1 rounded transition flex-shrink-0">✕</button>
                 </div>
 
                 <div id="ho-agent-messages" class="flex-1 overflow-y-auto px-4 py-3 space-y-2 bg-gray-950"></div>
@@ -712,6 +725,20 @@
             if (textWs) { textWs.close(); textWs = null; }
             textInHandoff = false;
             textSetStatus('gray', 'Disconnected', false);
+        }
+
+        function textClearSession() {
+            textSessionId = null;
+            document.getElementById('text-session-id').value = '';
+        }
+
+        function voiceClearSession() {
+            voiceSessionId = null;
+            document.getElementById('voice-session-id').value = '';
+        }
+
+        function hoAgentClearSession() {
+            document.getElementById('ho-agent-session-input').value = '';
         }
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -1280,7 +1307,13 @@
         }
 
         // Initialize default API base from host for text mode
-        document.getElementById('cfg-api-base').value = `${location.protocol}//${location.host}`;
+        (() => {
+            const el = document.getElementById('cfg-api-base');
+            const cur = `${location.protocol}//${location.host}`;
+            if ([...el.options].some((o) => o.value === cur)) {
+                el.value = cur;
+            }
+        })();
     </script>
 </body>
 
