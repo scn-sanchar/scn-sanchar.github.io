@@ -120,16 +120,9 @@
                         disabled>Send</button>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    <input id="text-image-url" type="url" placeholder="Supabase image URL (optional)"
-                        class="bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500 disabled:opacity-40"
+                    <input id="text-image-file" type="file" accept="image/*"
+                        class="bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500 disabled:opacity-40 file:mr-3 file:py-0.5 file:px-2 file:rounded file:border-0 file:bg-gray-700 file:text-gray-200 file:text-xs"
                         disabled />
-                    <select id="text-mime-type"
-                        class="bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500 disabled:opacity-40"
-                        disabled>
-                        <option>image/png</option>
-                        <option>image/jpeg</option>
-                        <option>image/webp</option>
-                    </select>
                     <button id="text-handoff-btn" onclick="textRequestHandoff()"
                         class="bg-yellow-600 hover:bg-yellow-500 text-white text-sm px-4 py-2 rounded transition disabled:opacity-40"
                         disabled>Request Handoff</button>
@@ -359,6 +352,23 @@
             setTimeout(() => el.classList.add('hidden'), 5000);
         }
 
+        // One-time OCR ref: upload image, backend caches bytes in Redis (ref
+        // expires on use/TTL — image never stored for display/history).
+        async function uploadOcrImage(file) {
+            const fd = new FormData();
+            fd.append('file', file);
+            const res = await fetch(`${getCfg().apiBase}/api/public/ocr/attachments`, {
+                method: 'POST',
+                headers: { 'X-API-Key': getCfg().apiKey },
+                body: fd,
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.detail || `HTTP ${res.status}`);
+            }
+            return (await res.json()).ref;
+        }
+
         function escapeHtml(str) {
             return String(str)
                 .replace(/&/g, '&amp;')
@@ -528,7 +538,7 @@
             const div = document.createElement('div');
             div.className = 'mt-1.5 rounded-lg border border-gray-700/60 overflow-hidden text-xs';
 
-            if (att.type === 'image/png' || att.type === 'image/jpeg' || att.type === 'image/gif') {
+            if (att.url && att.type.startsWith('image/')) {
                 div.innerHTML = `<img src="${escapeHtml(att.url)}" alt="${escapeHtml(att.name)}" class="w-full h-32 object-cover" onerror="this.style.display='none'"/>`;
             } else if (att.type === 'ecommerce/product' && att.productData) {
                 const p = att.productData;
@@ -556,19 +566,35 @@
             return div;
         }
 
+        // Server drops idle sockets after ~60s; ping well inside that window.
+        const HEARTBEAT_MS = 20000;
+        function startHeartbeat(getWs) {
+            return setInterval(() => {
+                const ws = getWs();
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: 'heartbeat' }));
+                }
+            }, HEARTBEAT_MS);
+        }
+
         // ═══════════════════════════════════════════════════════════════════════
         // MODE: TEXT CHAT
         // ═══════════════════════════════════════════════════════════════════════
         let textWs = null;
+        let textHeartbeat = null;
         let textStreamingBubble = null;
         let textStreamed = false;
         let textSessionId = null;
         let textInHandoff = false;
 
-        document.getElementById('text-image-url')?.addEventListener('input', e => {
+        document.getElementById('text-image-file')?.addEventListener('change', e => {
             const preview = document.getElementById('text-preview');
-            preview.src = e.target.value;
-            preview.classList.toggle('hidden', !e.target.value);
+            if (e.target.files[0]) {
+                preview.src = URL.createObjectURL(e.target.files[0]);
+                preview.classList.remove('hidden');
+            } else {
+                preview.classList.add('hidden');
+            }
         });
 
         function textSetStatus(color, text, connected) {
@@ -576,8 +602,7 @@
             document.getElementById('text-status-text').textContent = text;
             document.getElementById('text-send-btn').disabled = !connected;
             document.getElementById('text-input').disabled = !connected;
-            document.getElementById('text-image-url').disabled = !connected;
-            document.getElementById('text-mime-type').disabled = !connected;
+            document.getElementById('text-image-file').disabled = !connected;
             document.getElementById('text-handoff-btn').disabled = !connected;
             ['text-connect-btn', 'text-disconnect-btn'].forEach(id => {
                 const el = document.getElementById(id);
@@ -612,6 +637,7 @@
                     type: 'auth',
                     payload: { 'x-api-key': cfg.apiKey, 'chatbot-id': cfg.chatbotId },
                 }));
+                textHeartbeat = startHeartbeat(() => textWs);
             });
 
             textWs.addEventListener('message', ev => {
@@ -621,7 +647,10 @@
                 textHandleMsg(msg);
             });
 
-            textWs.addEventListener('close', () => textSetStatus('red', 'Disconnected', false));
+            textWs.addEventListener('close', () => {
+                clearInterval(textHeartbeat);
+                textSetStatus('red', 'Disconnected', false);
+            });
             textWs.addEventListener('error', () => {
                 addMsg('text-messages', 'left', 'WebSocket connection failed', 'Error');
                 textSetStatus('red', 'Error', false);
@@ -684,28 +713,43 @@
                     textInHandoff = false;
                     addSystemMsg('text-messages', 'Agent ended session. AI assistant resumed.');
                     break;
+                case 'processing':
+                    addSystemMsg('text-messages', msg.payload?.message || '');
+                    break;
                 case 'error':
                     addMsg('text-messages', 'left', msg.payload?.error || 'Unknown error', 'Error');
                     break;
             }
         }
 
-        function textSend() {
+        async function textSend() {
             const input = document.getElementById('text-input');
             const query = input.value.trim();
-            const imageUrl = document.getElementById('text-image-url').value.trim();
-            const mimeType = document.getElementById('text-mime-type').value;
-            if (!query && !imageUrl) return;
+            const fileInput = document.getElementById('text-image-file');
+            const file = fileInput.files[0];
+            if (!query && !file) return;
             if (!textWs || textWs.readyState !== WebSocket.OPEN) return;
 
             const attachments = [];
-            if (imageUrl) {
-                const name = new URL(imageUrl).pathname.split('/').pop() || 'image';
-                attachments.push({ id: crypto.randomUUID(), name, size: 0, type: mimeType, url: imageUrl });
+            if (file) {
+                let ref;
+                try {
+                    ref = await uploadOcrImage(file);
+                } catch (e) {
+                    showCfgError(`Image upload failed: ${e.message}`);
+                    return;
+                }
+                attachments.push({
+                    id: crypto.randomUUID(),
+                    name: file.name,
+                    size: file.size,
+                    type: file.type || 'image/png',
+                    ref,
+                });
             }
 
             input.value = '';
-            document.getElementById('text-image-url').value = '';
+            fileInput.value = '';
             document.getElementById('text-preview').classList.add('hidden');
             addMsg('text-messages', 'right', query || '[attachment]', null, attachments);
 
@@ -753,6 +797,7 @@
         let voiceApiKey = '';
         let voiceChatbotId = '';
         let voiceTextWs = null;
+        let voiceHeartbeat = null;
         let voiceTextReady = false;
         let agentParticipantIdentity = null;
         let voiceTextBubble = null;
@@ -935,6 +980,7 @@
                     type: 'auth',
                     payload: { 'x-api-key': voiceApiKey, 'chatbot-id': voiceChatbotId },
                 }));
+                voiceHeartbeat = startHeartbeat(() => voiceTextWs);
             });
 
             voiceTextWs.addEventListener('message', (ev) => {
@@ -969,7 +1015,10 @@
                 }
             });
 
-            voiceTextWs.addEventListener('close', () => { voiceTextReady = false; });
+            voiceTextWs.addEventListener('close', () => {
+                clearInterval(voiceHeartbeat);
+                voiceTextReady = false;
+            });
         }
 
         async function voiceSendText() {
@@ -1041,11 +1090,13 @@
         // MODE: AGENT HANDOFF
         // ═══════════════════════════════════════════════════════════════════════
         let hoUserWs = null;
+        let hoUserHeartbeat = null;
         let hoUserSessionId = null;
         let hoUserInHandoff = false;
         let hoUserStreamBubble = null;
 
         let hoAgentWs = null;
+        let hoAgentHeartbeat = null;
         let hoAgentAuthStep = 0;
         let hoAgentStreamBubble = null;
 
@@ -1100,10 +1151,12 @@
                     type: 'auth',
                     payload: { 'x-api-key': cfg.apiKey, 'chatbot-id': cfg.chatbotId },
                 }));
+                hoUserHeartbeat = startHeartbeat(() => hoUserWs);
             });
 
             hoUserWs.addEventListener('message', ev => { let msg; try { msg = JSON.parse(ev.data); } catch { return; } hoUserHandleMsg(msg); });
             hoUserWs.addEventListener('close', () => {
+                clearInterval(hoUserHeartbeat);
                 hoUserSetStatus('red', 'Disconnected');
                 hoUserSetConnected(false);
                 addSystemMsg('ho-user-messages', 'WebSocket closed');
@@ -1169,6 +1222,9 @@
                     document.getElementById('ho-user-handoff-btn').disabled = false;
                     document.getElementById('ho-user-handoff-btn').textContent = 'Request Handoff Again';
                     break;
+                case 'processing':
+                    addSystemMsg('ho-user-messages', msg.payload?.message || '');
+                    break;
                 case 'error':
                     addSystemMsg('ho-user-messages', `⚠ ${msg.payload?.error || 'Unknown error'}`);
                     break;
@@ -1226,10 +1282,12 @@
             hoAgentWs.addEventListener('open', () => {
                 hoAgentAuthStep = 1;
                 hoAgentWs.send(JSON.stringify({ type: 'auth', payload: { 'x-api-key': cfg.apiKey } }));
+                hoAgentHeartbeat = startHeartbeat(() => hoAgentWs);
             });
 
             hoAgentWs.addEventListener('message', ev => { let msg; try { msg = JSON.parse(ev.data); } catch { return; } hoAgentHandleMsg(msg); });
             hoAgentWs.addEventListener('close', () => {
+                clearInterval(hoAgentHeartbeat);
                 hoAgentSetStatus('red', 'Disconnected');
                 hoAgentSetConnected(false);
                 addSystemMsg('ho-agent-messages', 'Agent WebSocket closed');
